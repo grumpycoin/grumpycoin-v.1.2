@@ -13,6 +13,33 @@
   <property name="windowTitle">
    <string>QR Code Dialog</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">*{    
+   font-family:&quot;Finger Paint&quot;;
+    font-size:10px;
+}
+QDialog{
+	background-color: #32b4f0;
+}
+QPushButton {
+	background-color: #927b72;
+    font-family:&quot;Finger Paint&quot;;
+	color: #f0dfe7;
+	border: 0px solid gray;
+	max-height: 20px;
+	min-height: 20px;
+	max-width: 160px;
+	min-width: 160px;
+}
+
+QPushButton:hover {
+	background-color: #32b4f0;
+}
+
+QPushButton:pressed:flat {
+	background-color: #00a3de;
+}</string>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
     <widget class="QLabel" name="lblQRCode">
@@ -140,7 +167,7 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="BitcoinAmountField" name="lnReqAmount">
+         <widget class="GrumpyCoinAmountField" name="lnReqAmount">
           <property name="enabled">
            <bool>false</bool>
           </property>
@@ -185,9 +212,10 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>BitcoinAmountField</class>
+   <class>GrumpyCoinAmountField</class>
    <extends>QSpinBox</extends>
    <header>bitcoinamountfield.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

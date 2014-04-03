@@ -1,23 +1,20 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
-// Copyright (c) 2011-2012 Litecoin Developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "irc.h"
 #include "net.h"
-#include "strlcpy.h"
 #include "base58.h"
 
+#include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
+#ifdef __linux__
+#include <sys/ioctl.h>
+#endif
 using namespace std;
 using namespace boost;
 
 int nGotIRCAddresses = 0;
-
-void ThreadIRCSeed2(void* parg);
-
-
-
 
 #pragma pack(push, 1)
 struct ircaddr
@@ -68,6 +65,7 @@ static bool Send(SOCKET hSocket, const char* pszSend)
     const char* pszEnd = psz + strlen(psz);
     while (psz < pszEnd)
     {
+		boost::this_thread::interruption_point();
         int ret = send(hSocket, psz, pszEnd - psz, MSG_NOSIGNAL);
         if (ret < 0)
             return false;
@@ -76,15 +74,90 @@ static bool Send(SOCKET hSocket, const char* pszSend)
     return true;
 }
 
+int SocketCanRead(int fd)
+{
+#ifdef _WIN32
+    unsigned long opt;
+    if (ioctlsocket(fd, FIONREAD, &opt) < 0) { return 0; }
+    return opt;
+#else
+    int opt;
+    if (ioctl(fd, FIONREAD, &opt) < 0) { return 0; }
+    return opt;
+#endif
+}
+
+bool RecvLineFixed(SOCKET hSocket, string& strLine)
+{
+    strLine = "";
+    loop
+    {
+
+        char c;
+		
+		// +grumpycoin added for irc exits, without this, recv(hSocket, &c, 1, 0); will hang when closing the program after using irc on windows.
+		bool stop = false;
+		u_long RecvCount;
+        while(!stop)
+        {
+			boost::this_thread::interruption_point(); 
+			if (SocketCanRead(hSocket) >= 1) { stop = true; }
+			else { MilliSleep(10); }
+        }
+		
+        int nBytes = recv(hSocket, &c, 1, 0);
+        if (nBytes > 0)
+        {
+            if (c == '\n')
+                continue;
+            if (c == '\r')
+                return true;
+            strLine += c;
+            if (strLine.size() >= 9000)
+                return true;
+        }
+        else if (nBytes <= 0)
+        {
+            boost::this_thread::interruption_point();
+            if (nBytes < 0)
+            {
+                int nErr = WSAGetLastError();
+                if (nErr == WSAEMSGSIZE)
+                    continue;
+                if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS)
+                {
+                    MilliSleep(10);
+                    continue;
+                }
+            }
+            if (!strLine.empty())
+                return true;
+            if (nBytes == 0)
+            {
+                // socket closed
+                printf("socket closed\n");
+                return false;
+            }
+            else
+            {
+                // socket error
+                int nErr = WSAGetLastError();
+                printf("recv failed: %d\n", nErr);
+                return false;
+            }
+        }
+    }
+}
+
 bool RecvLineIRC(SOCKET hSocket, string& strLine)
 {
     loop
     {
-        bool fRet = RecvLine(hSocket, strLine);
+		boost::this_thread::interruption_point();
+        bool fRet = RecvLineFixed(hSocket, strLine);
         if (fRet)
         {
-            if (fShutdown)
-                return false;
+			boost::this_thread::interruption_point();
             vector<string> vWords;
             ParseString(strLine, ' ', vWords);
             if (vWords.size() >= 1 && vWords[0] == "PING")
@@ -103,6 +176,8 @@ int RecvUntil(SOCKET hSocket, const char* psz1, const char* psz2=NULL, const cha
 {
     loop
     {
+		boost::this_thread::interruption_point();
+
         string strLine;
         strLine.reserve(10000);
         if (!RecvLineIRC(hSocket, strLine))
@@ -121,14 +196,12 @@ int RecvUntil(SOCKET hSocket, const char* psz1, const char* psz2=NULL, const cha
 
 bool Wait(int nSeconds)
 {
-    if (fShutdown)
-        return false;
+	boost::this_thread::interruption_point();
     printf("IRC waiting %d seconds to reconnect\n", nSeconds);
     for (int i = 0; i < nSeconds; i++)
     {
-        if (fShutdown)
-            return false;
-        Sleep(1000);
+		boost::this_thread::interruption_point();
+        MilliSleep(1000);
     }
     return true;
 }
@@ -138,6 +211,7 @@ bool RecvCodeLine(SOCKET hSocket, const char* psz1, string& strRet)
     strRet.clear();
     loop
     {
+		boost::this_thread::interruption_point();
         string strLine;
         if (!RecvLineIRC(hSocket, strLine))
             return false;
@@ -185,57 +259,44 @@ bool GetIPFromIRC(SOCKET hSocket, string strMyName, CNetAddr& ipRet)
     return true;
 }
 
-
-
-void ThreadIRCSeed(void* parg)
+void ThreadIRCSeed()
 {
-    IMPLEMENT_RANDOMIZE_STACK(ThreadIRCSeed(parg));
-
-    // Make this thread recognisable as the IRC seeding thread
-    RenameThread("bitcoin-ircseed");
-
-    try
-    {
-        ThreadIRCSeed2(parg);
-    }
-    catch (std::exception& e) {
-        PrintExceptionContinue(&e, "ThreadIRCSeed()");
-    } catch (...) {
-        PrintExceptionContinue(NULL, "ThreadIRCSeed()");
-    }
-    printf("ThreadIRCSeed exited\n");
-}
-
-void ThreadIRCSeed2(void* parg)
-{
-    /* Dont advertise on IRC if we don't allow incoming connections */
-    if (mapArgs.count("-connect") || fNoListen)
+    // Don't connect to IRC if we won't use IPv4 connections.
+    if (IsLimited(NET_IPV4))
         return;
 
+    // ... or if we won't make outbound connections and won't accept inbound ones.
+    if (mapArgs.count("-connect") && fNoListen)
+        return;
+
+    // ... or if IRC is not enabled.
     if (!GetBoolArg("-irc", false))
         return;
 
-    printf("ThreadIRCSeed started\n");
+    printf("ThreadIRCSeed trying to connect...\n");
+
     int nErrorWait = 10;
     int nRetryWait = 10;
+    int nNameRetry = 0;
 
-    while (!fShutdown)
+    while (true)
     {
-        CService addrConnect("92.243.23.21", 6667); // irc.lfnet.org
-
-        CService addrIRC("irc.lfnet.org", 6667, true);
-        if (addrIRC.IsValid())
-            addrConnect = addrIRC;
+		boost::this_thread::interruption_point();
+        CService addrConnect("irc.lfnet.org", 6667, true);
 
         SOCKET hSocket;
         if (!ConnectSocket(addrConnect, hSocket))
         {
-            printf("IRC connect failed\n");
-            nErrorWait = nErrorWait * 11 / 10;
-            if (Wait(nErrorWait += 60))
-                continue;
-            else
-                return;
+			addrConnect = CService("pelican.heliacal.net", 6667, true);
+			if (!ConnectSocket(addrConnect, hSocket))
+			{
+				printf("IRC connect failed\n");
+				nErrorWait = nErrorWait * 11 / 10;
+				if (Wait(nErrorWait += 60))
+					continue;
+				else
+					return;
+			}
         }
 
         if (!RecvUntil(hSocket, "Found your hostname", "using your IP address instead", "Couldn't look up your hostname", "ignoring hostname"))
@@ -252,10 +313,12 @@ void ThreadIRCSeed2(void* parg)
         CNetAddr addrIPv4("1.2.3.4"); // arbitrary IPv4 address to make GetLocal prefer IPv4 addresses
         CService addrLocal;
         string strMyName;
-        if (GetLocal(addrLocal, &addrIPv4))
+        // Don't use our IP as our nick if we're not listening
+        // or if it keeps failing because the nick is already in use.
+        if (!fNoListen && GetLocal(addrLocal, &addrIPv4) && nNameRetry<3)
             strMyName = EncodeAddress(GetLocalAddress(&addrConnect));
         if (strMyName == "")
-            strMyName = strprintf("x%u", GetRand(1000000000));
+            strMyName = strprintf("x%"PRI64u"", GetRand(1000000000));
 
         Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
         Send(hSocket, strprintf("USER %s 8 * : %s\r", strMyName.c_str(), strMyName.c_str()).c_str());
@@ -268,6 +331,7 @@ void ThreadIRCSeed2(void* parg)
             if (nRet == 2)
             {
                 printf("IRC name already in use\n");
+                nNameRetry++;
                 Wait(10);
                 continue;
             }
@@ -277,14 +341,16 @@ void ThreadIRCSeed2(void* parg)
             else
                 return;
         }
-        Sleep(500);
+        nNameRetry = 0;
+        MilliSleep(500);
 
         // Get our external IP from the IRC server and re-nick before joining the channel
         CNetAddr addrFromIRC;
         if (GetIPFromIRC(hSocket, strMyName, addrFromIRC))
         {
             printf("GetIPFromIRC() returned %s\n", addrFromIRC.ToString().c_str());
-            if (addrFromIRC.IsRoutable())
+            // Don't use our IP as our nick if we're not listening
+            if (!fNoListen && addrFromIRC.IsRoutable())
             {
                 // IRC lets you to re-nick
                 AddLocal(addrFromIRC, LOCAL_IRC);
@@ -292,14 +358,14 @@ void ThreadIRCSeed2(void* parg)
                 Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
             }
         }
-        
+
         if (fTestNet) {
             Send(hSocket, "JOIN #grumpycoin2TEST3\r");
             Send(hSocket, "WHO #grumpycoin2TEST3\r");
         } else {
             // randomly join #grumpycoin00-#grumpycoin99
             int channel_number = GetRandInt(100);
-            channel_number = 0; // Litecoin: for now, just use one channel
+			channel_number = 1; // For now, just use one channel
             Send(hSocket, strprintf("JOIN #grumpycoin2%02d\r", channel_number).c_str());
             Send(hSocket, strprintf("WHO #grumpycoin2%02d\r", channel_number).c_str());
         }
@@ -307,8 +373,9 @@ void ThreadIRCSeed2(void* parg)
         int64 nStart = GetTime();
         string strLine;
         strLine.reserve(10000);
-        while (!fShutdown && RecvLineIRC(hSocket, strLine))
+        while (RecvLineIRC(hSocket, strLine))
         {
+			boost::this_thread::interruption_point();
             if (strLine.empty() || strLine.size() > 900 || strLine[0] != ':')
                 continue;
 
@@ -317,30 +384,27 @@ void ThreadIRCSeed2(void* parg)
             if (vWords.size() < 2)
                 continue;
 
-            char pszName[10000];
-            pszName[0] = '\0';
+            std::string strName;
 
             if (vWords[1] == "352" && vWords.size() >= 8)
             {
                 // index 7 is limited to 16 characters
                 // could get full length name at index 10, but would be different from join messages
-                strlcpy(pszName, vWords[7].c_str(), sizeof(pszName));
+                strName = vWords[7].c_str();
                 printf("IRC got who\n");
             }
 
             if (vWords[1] == "JOIN" && vWords[0].size() > 1)
             {
                 // :username!username@50000007.F000000B.90000002.IP JOIN :#channelname
-                strlcpy(pszName, vWords[0].c_str() + 1, sizeof(pszName));
-                if (strchr(pszName, '!'))
-                    *strchr(pszName, '!') = '\0';
+                strName = vWords[0].substr(1, vWords[0].find('!', 1) - 1);
                 printf("IRC got join\n");
             }
 
-            if (pszName[0] == 'u')
+            if (boost::algorithm::starts_with(strName, "u"))
             {
                 CAddress addr;
-                if (DecodeAddress(pszName, addr))
+                if (DecodeAddress(strName, addr))
                 {
                     addr.nTime = GetAdjustedTime();
                     if (addrman.Add(addr, addrConnect, 51 * 60))

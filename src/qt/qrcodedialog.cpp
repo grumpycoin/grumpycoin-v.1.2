@@ -7,7 +7,9 @@
 #include "optionsmodel.h"
 
 #include <QPixmap>
+#if QT_VERSION < 0x050000
 #include <QUrl>
+#endif
 
 #include <qrencode.h>
 
@@ -44,7 +46,7 @@ void QRCodeDialog::setModel(OptionsModel *model)
     if (model)
         connect(model, SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 
-    // update the display unit, to not use the default ("BTC")
+    // update the display unit, to not use the default ("GRUMP")
     updateDisplayUnit();
 }
 
@@ -92,8 +94,8 @@ QString QRCodeDialog::getURI()
     {
         if (ui->lnReqAmount->validate())
         {
-            // even if we allow a non BTC unit input in lnReqAmount, we generate the URI with BTC as unit (as defined in BIP21)
-            ret += QString("?amount=%1").arg(BitcoinUnits::format(BitcoinUnits::BTC, ui->lnReqAmount->value()));
+            // even if we allow a non GRUMP unit input in lnReqAmount, we generate the URI with GRUMP as unit (as defined in BIP21)
+            ret += QString("?amount=%1").arg(GrumpyCoinUnits::format(GrumpyCoinUnits::GRUMP, ui->lnReqAmount->value()));
             paramCount++;
         }
         else

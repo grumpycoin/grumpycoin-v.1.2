@@ -1,0 +1,33 @@
+src/*.exe
+src/grumpycoin
+src/grumpycoind
+src/test_grumpycoin
+.*.swp
+*.*~*
+*.bak
+*.rej
+*.orig
+*.o
+*.patch
+.grumpycoin
+
+# Compilation and Qt preprocessor part
+*.qm
+grumpycoin-qt
+GrumpyCoin-Qt.app
+
+# Unit-tests
+Makefile.test
+grumpycoin-qt_test
+
+# Resources cpp
+qrc_*.cpp
+
+# Qt creator
+*.pro.user
+
+# Mac specific
+.DS_Store
+build
+
+!src/leveldb-*/Makefile

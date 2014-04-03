@@ -1,0 +1,6 @@
+grumpycoin-qt usr/bin
+share/pixmaps/grumpycoin32.xpm usr/share/pixmaps
+share/pixmaps/grumpycoin16.xpm usr/share/pixmaps
+share/pixmaps/grumpycoin128.png usr/share/pixmaps
+debian/grumpycoin-qt.desktop usr/share/applications
+debian/grumpycoin-qt.protocol usr/share/kde4/services/

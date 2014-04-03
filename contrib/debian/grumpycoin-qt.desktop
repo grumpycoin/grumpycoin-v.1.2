@@ -1,0 +1,12 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=GrumpyCoin
+Comment=GrumpyCoin P2P Cryptocurrency
+Comment[fr]=GrumpyCoin, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=GrumpyCoin, eşten eşe kriptografik sanal para birimi
+Exec=/usr/bin/grumpycoin-qt
+Terminal=false
+Type=Application
+Icon=/usr/share/pixmaps/grumpycoin128.png
+MimeType=x-scheme-handler/grumpycoin;
+Categories=Office;

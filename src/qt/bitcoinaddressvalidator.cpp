@@ -5,20 +5,20 @@
 
   This is:
   - All numbers except for '0'
-  - All uppercase letters except for 'I' and 'O'
-  - All lowercase letters except for 'l'
+  - All upper-case letters except for 'I' and 'O'
+  - All lower-case letters except for 'l'
 
   User friendly Base58 input can map
   - 'l' and 'I' to '1'
   - '0' and 'O' to 'o'
 */
 
-BitcoinAddressValidator::BitcoinAddressValidator(QObject *parent) :
+GrumpyCoinAddressValidator::GrumpyCoinAddressValidator(QObject *parent) :
     QValidator(parent)
 {
 }
 
-QValidator::State BitcoinAddressValidator::validate(QString &input, int &pos) const
+QValidator::State GrumpyCoinAddressValidator::validate(QString &input, int &pos) const
 {
     // Correction
     for(int idx=0; idx<input.size();)

@@ -13,17 +13,72 @@
   <property name="windowTitle">
    <string>Options</string>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">*{
+    font-family:&quot;Finger Paint&quot;;
+}
+QTabBar::tab{
+	color: #ffffff;
+	background-color: #006983;
+}
+QTabBar::tab:selected{
+	color: #ffffff;
+	background-color: #32b4f0;
+}
+
+QDialog {
+	background-color: rgb(0, 166, 207);
+}
+QPushButton {
+	background-color: #927b72;
+	color: #f0dfe7;
+	border: 0px solid gray;
+	max-height: 20px;
+	min-height: 20px;
+	max-width: 160px;
+	min-width: 160px;
+}
+
+QPushButton:hover {
+	background-color: #32b4f0;
+}
+
+QPushButton:pressed:flat {
+	background-color: #00a3de;
+}</string>
+  </property>
   <property name="modal">
    <bool>true</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTabWidget" name="tabWidget">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">* {
+	color: #ffffff;
+	background-color: #32b4f0;
+    font-family:&quot;Finger Paint&quot;;
+}
+QLineEdit,QTextEdit,QPlainTextEdit,QDateTimeEdit,QValidatedLineEdit {
+	color: #000000;
+    background-color: #ffffff;
+}
+</string>
+     </property>
      <property name="tabPosition">
       <enum>QTabWidget::North</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tabMain">
       <attribute name="title">
@@ -33,7 +88,7 @@
        <item>
         <widget class="QLabel" name="transactionFeeInfoLabel">
          <property name="text">
-          <string>Optional transaction fee per kB that helps make sure your transactions are processed quickly. Most transactions are 1 kB. Fee 0.01 recommended.</string>
+          <string>Optional transaction fee per kB that helps make sure your transactions are processed quickly. Most transactions are 1 kB.</string>
          </property>
          <property name="textFormat">
           <enum>Qt::PlainText</enum>
@@ -44,7 +99,7 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_Main">
+        <layout class="QHBoxLayout" name="horizontalLayout_1_Main">
          <item>
           <widget class="QLabel" name="transactionFeeLabel">
            <property name="text">
@@ -59,10 +114,10 @@
           </widget>
          </item>
          <item>
-          <widget class="BitcoinAmountField" name="transactionFee"/>
+          <widget class="GrumpyCoinAmountField" name="transactionFee"/>
          </item>
          <item>
-          <spacer name="horizontalSpacer_Main">
+          <spacer name="horizontalSpacer_1_Main">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
@@ -77,22 +132,12 @@
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="bitcoinAtStartup">
+        <widget class="QCheckBox" name="grumpycoinAtStartup">
          <property name="toolTip">
           <string>Automatically start GrumpyCoin after logging in to the system.</string>
          </property>
          <property name="text">
           <string>&amp;Start GrumpyCoin on system login</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="detachDatabases">
-         <property name="toolTip">
-          <string>Detach block and address databases at shutdown. This means they can be moved to another data directory, but it slows down shutdown. The wallet is always detached.</string>
-         </property>
-         <property name="text">
-          <string>&amp;Detach databases at shutdown</string>
          </property>
         </widget>
        </item>
@@ -108,6 +153,36 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_2_Main">
+         <item>
+          <spacer name="horizontalSpacer_2_Main">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="resetButton">
+           <property name="toolTip">
+            <string>Reset all client options to default.</string>
+           </property>
+           <property name="text">
+            <string>&amp;Reset Options</string>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
@@ -358,6 +433,36 @@
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="tabMining">
+      <attribute name="title">
+       <string>Mining</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_Display">
+       <item>
+        <widget class="QCheckBox" name="autoMining">
+         <property name="toolTip">
+          <string/>
+         </property>
+         <property name="text">
+          <string>&amp;Start mining GrumpyCoins on application start</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_Mining">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
@@ -379,8 +484,7 @@
       <widget class="QLabel" name="statusLabel">
        <property name="font">
         <font>
-         <weight>75</weight>
-         <bold>true</bold>
+         <family>Finger Paint</family>
         </font>
        </property>
        <property name="text">
@@ -432,12 +536,6 @@
        <property name="autoDefault">
         <bool>false</bool>
        </property>
-       <property name="default">
-        <bool>false</bool>
-       </property>
-       <property name="flat">
-        <bool>false</bool>
-       </property>
       </widget>
      </item>
     </layout>
@@ -446,9 +544,10 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>BitcoinAmountField</class>
+   <class>GrumpyCoinAmountField</class>
    <extends>QSpinBox</extends>
    <header>bitcoinamountfield.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QValueComboBox</class>

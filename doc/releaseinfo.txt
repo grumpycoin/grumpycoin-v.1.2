@@ -1,0 +1,52 @@
+grumpycoin community 
+version 2.1
+changes			comment
+lots of files!		Upgrade bitcoin 0.6 to 0.8,
+			renamed files so it easier to upgrade to new bitcoin releases
+src\qt\locale\		corrected translations
+src\qt\forms\*.ui	new user interface
+src\qt\res\images	new splash images
+src\net.cpp		No hardcoded unsupported DNSseed 162.243.90.199:55904, using grumpyconf.conf
+src\netbase.cpp 	old grumpycoin supports I2P network, removed
+src\main.cpp		KGW exploit fix, startblock 48200
+			https://bitcointalk.org/index.php?topic=552895
+src\main.h		KGW exploit fix, startblock 48200
+protocol.h		corrected ports
+
+MESSAGE FUNCTION NOT SUPPORTED YET, WILL BE TESTED OR REMOVED, KGW EXPLOIT FIX FIRST PRIORITY!
+
+version 2.0
+
+Changes			Comment
+grumpycoin.pro		windows fixes
+
+src\qt\forms\*.ui	theme fixes
+
+src\qt\bitcoin.cpp	Black startup text
+src\qt\guiutil.cpp	Monospace=>Finger Paint
+src\qt\bitcoingui.cpp	font antialiasing, window blue/pink background, white text, menu blue/pink background, white text
+src\qt\bitcoin.qrc	new coin image and replaced splash image
+
+
+src\util.h		https://github.com/laanwj/bitcoin/commit/61d85071405b99c3734606eed31ea8f615c0c77a
+src\util.cpp		https://github.com/laanwj/bitcoin/commit/61d85071405b99c3734606eed31ea8f615c0c77a
+src\version.cpp		replaced -geo and -unk with -beta
+src\version.h		version 2!
+
+updated images:
+src\qt\res\icons\bitcoin.ico
+src\qt\res\icons\bitcoin.icns
+src\qt\res\icons\bitcoin.png
+src\qt\res\bitcoin_testnet.png
+src\qt\res\toolbar.png
+src\qt\res\toolbar_testnet.png
+src\qt\images\about.png
+src\qt\images\coin.png
+src\qt\images\splash2.png
+
+removed
+src\qt\images\splash2.jpg
+
+
+src\qt\bitcoingui.cpp	theme fixes
+
